@@ -1,0 +1,775 @@
+---
+title: "Profiles on Jersey City project tracts"
+author: "Andrew Ba Tran"
+output:
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+library(tidycensus)
+library(tidyverse)
+source("keys.R")
+source("theme_nothing.R")
+library(tigris)
+#library(sf)
+library(viridis)
+library(ggmap)
+library(DT)
+library(leaflet)
+options(tigris_use_cache = TRUE)
+
+census_api_key(key)
+
+library(readr)
+library(lubridate)
+library(dplyr)
+library(stringr)
+library(sp)
+
+```
+
+# 1 Journal Square (2017)
+
+**County:** Hudson
+
+**Census tracts:** 19, 46, 53, 66, 67, 71
+
+**Address:** 1 Journal Square, Jersey City, NJ 07306
+
+```{r methodology1, fig.width=9, fig.height=6, message=F, warning=F}
+
+#* A ratio is developed for the census tracts based on the ACS 2009 - 2013 Census data and then applied to the 2015 annual average data for the derivation county
+
+#* The ACS 2009 - 2013 Census employment and unemployment figures for the tract are divided by the corresponding ACS 2009 - 2013 Census employment and unemployment data for the derivation county
+
+#* The resulting ratios are thena pplied to the 2015 annual average employment and unemployment data for the derivation county
+
+#* These employment and unemployment figures are then summed to determine the labor force figure
+
+#* Finally, the unemployment rate is calcuated by dividing the unemployment figure by the labor force figure
+
+#* The qualifying rate using 2015 annual average data is 8.0 percent (1.5 times the US not seasonally adjusted unemployment rate for the same time period)
+```
+
+There are 164 census tracts within Hudson County. 
+
+The tracts associated with this project include the areas with the highest and lowest unemployment rates in the county. The tract where 1 Journal Square was constructed tied for 62nd place in lowest unemployment rate at 8.6 percent in 2013. Tract 67 was included by planners within the project borders but is nearly two and a half miles away from the site and had an unemployment rate of 24 percent— the second worst rate in the county.
+
+According to the application, the combined unemployment rate is greater than or equal to the qualifying rate of 8 percent (150 percent of the US rate for the same time period).
+
+```{r data_prep, warning=F, message=F}
+# GEOIDs: 34017001900, 34017004600, 34017005300, 34017006600, 34017006700, 34017007100
+
+hudson_unemployment_2013 <- get_acs(geography="tract", endyear=2013, variables= c("B23025_005E", "B23025_002E"), county = "Hudson", state="NJ")
+hudson_unemployment_2015 <- get_acs(geography="tract", endyear=2015, variables= c("B23025_005E", "B23025_002E"), county = "Hudson", state="NJ")
+
+hudson_unemployment_2013$moe <- NULL
+hudson_unemployment_2015$moe <- NULL
+
+hudson_unemployment_2013 <- spread(hudson_unemployment_2013,variable, estimate )
+hudson_unemployment_2015 <- spread(hudson_unemployment_2015,variable, estimate )
+hudson_unemployment_2013$per_un <- round(hudson_unemployment_2013[,4]/hudson_unemployment_2013[,3]*100,2)
+hudson_unemployment_2015$per_un <- round(hudson_unemployment_2015[,4]/hudson_unemployment_2015[,3]*100,2)
+
+hudson_unemployment_2013 <- filter(hudson_unemployment_2013, GEOID!="34017006900" & GEOID!="34017980100")
+hudson_unemployment_2015 <- filter(hudson_unemployment_2015, GEOID!="34017006900" & GEOID!="34017980100")
+
+hudson_unemployment_2013$rank <- rank(hudson_unemployment_2013$per_un)
+hudson_unemployment_2015$rank <- rank(hudson_unemployment_2015$per_un)
+
+proj1 <- c("34017001900", "34017004600", "34017005300", "34017006600", "34017006700", "34017007100")
+
+hudson_unemployment_2013_sm <- filter(hudson_unemployment_2013, GEOID %in% proj1)
+hudson_unemployment_2015_sm <- filter(hudson_unemployment_2015, GEOID %in% proj1)
+
+colnames(hudson_unemployment_2013_sm) <- c("GEOID", "name", "total", "unemployed", "unemp_rate_2013", "2013_rank")
+colnames(hudson_unemployment_2015_sm) <- c("GEOID", "name", "total", "unemployed", "unemp_rate_2015", "2015_rank")
+
+hudson_unemployment_2013_sm <- select(hudson_unemployment_2013_sm, id=GEOID, name, unemp_rate_2013, `2013_rank`)
+hudson_unemployment_2015_sm <- select(hudson_unemployment_2015_sm, id=GEOID, unemp_rate_2015, `2015_rank`)
+hudson_unemp <- left_join(hudson_unemployment_2013_sm, hudson_unemployment_2015_sm)
+hudson_unemp$diff <- hudson_unemp$unemp_rate_2015$B23025_005 - hudson_unemp$unemp_rate_2013$B23025_005
+
+avg_2013 <- mean(hudson_unemp$unemp_rate_2013$B23025_005)
+avg_2015 <- mean(hudson_unemp$unemp_rate_2015$B23025_005)
+avg_diff <- avg_2015 - avg_2013
+
+hudson_unemp$ur_2013 <- hudson_unemp$unemp_rate_2013$B23025_005 
+hudson_unemp$ur_2015 <- hudson_unemp$unemp_rate_2015$B23025_005 
+
+hudson_unemp$unemp_rate_2013 <- NULL
+hudson_unemp$unemp_rate_2015 <- NULL
+
+hudson_unemp2 <- select(hudson_unemp, name, id, ur_2013, ur_2015)
+hudson_unemp2 <- gather(hudson_unemp2, "year", "unemployment_rate", 3:4)
+hudson_unemp3 <- select(hudson_unemp, tract=name, `unemployment rate 2013`=ur_2013, `unemployment rate 2015`=ur_2015, `2013 rank`=`2013_rank`, `2015 rank`=`2015_rank`)
+hudson_unemp3$tract <- gsub(",.*", "", hudson_unemp3$tract)
+datatable(hudson_unemp3)
+```
+
+According to our calculations (and ignoring margin of error for now), the average unemployment rate in these tracts between 2007 and 2013 was estmated to be `r round(avg_2013,1)` percent. Between 2013 and 2015, that rate changed to `r round(avg_2015,1)` percent. That's a difference of `r round(avg_diff,1)`. 
+
+
+```{r double_check, fig.width=9, fig.height=6, message=F, warning=F}
+# bringing in jersey city tract boundaries
+
+nj_h <- tracts("NJ", county="Hudson", cb=F)
+nj_hf <- fortify(nj_h, region="GEOID")
+
+nj_hud <- left_join(nj_hf, hudson_unemp2)
+nj_hud <- filter(nj_hud, !is.na(year))
+nj_hud$year <- gsub("ur_", "", nj_hud$year)
+one_journal_square <- c("40.734330, -74.063644")
+
+nj_map <- ggplot()
+nj_map <- nj_map + geom_polygon(data=nj_hf, aes(x=long, y=lat, group=group), fill=NA, color="black", size=.1)
+nj_map <- nj_map + geom_polygon(data=nj_hud, aes(x=long, y=lat, group=group, fill=unemployment_rate), color="black", size=.5)
+nj_map <- nj_map + facet_wrap(~year)
+nj_map <- nj_map + coord_map() 
+nj_map <- nj_map + scale_fill_viridis(option = "heat", direction=-1, name = "Unemployment rate")
+nj_map <- nj_map + scale_color_viridis(option = "heat", direction=-1)
+nj_map <- nj_map + theme_nothing(legend=TRUE) 
+nj_map <- nj_map + labs(x=NULL, y=NULL, title="1 Journal Square (2017)")
+nj_map <- nj_map + theme(panel.grid.major = element_line(colour = NA))
+nj_map <- nj_map + theme(text = element_text(size=15))
+nj_map <- nj_map + theme(plot.title=element_text(face="bold", hjust=.4))
+nj_map <- nj_map + theme(plot.subtitle=element_text(face="italic", size=9, margin=margin(l=20)))
+nj_map <- nj_map + theme(plot.caption=element_text(size=12, margin=margin(t=12), color="#7a7d7e", hjust=0))
+nj_map <- nj_map + theme(legend.key.size = unit(1, "cm"))
+nj_map <- nj_map + annotate("segment", x = -74.063644, xend = -74.035, y = 40.734330, yend = 40.734330, colour = "tomato", size=.5) 
+nj_map <- nj_map + annotate("point", x = -74.063644, y = 40.734330, colour = "lightblue", size = 1) 
+nj_map <- nj_map + annotate("text", x = -74.01, y = 40.734330, label = "1 Journal Square", size=3, colour="gray30") 
+
+print(nj_map)
+
+## slope graph
+
+hudson_unemp2$year <- gsub("ur_", "", hudson_unemp2$year)
+hudson_unemp2$name <- gsub(",.*", "", hudson_unemp2$name)
+hudson_unemp2_proj <- filter(hudson_unemp2, id=="34017001900")
+
+sp <- ggplot(hudson_unemp2) 
+sp <- sp + geom_line(aes(x=as.factor(year), y=unemployment_rate, group=id), size=1)
+sp <- sp + geom_point(aes(x=as.factor(year), y=unemployment_rate), size=3)
+sp <- sp + geom_line(data=hudson_unemp2_proj, aes(x=as.factor(year), y=unemployment_rate, group=id), size=1, color="tomato")
+sp <- sp + geom_point(data=hudson_unemp2_proj, aes(x=as.factor(year), y=unemployment_rate), size=3, color="tomato")
+sp <- sp + theme_minimal()
+sp <- sp + scale_y_log10()
+sp <- sp +geom_text(data = subset(hudson_unemp2, year=="2013"), 
+                    aes(x = as.factor(year), y = unemployment_rate, label = paste0(name, ": ", unemployment_rate, "%")), 
+                    size = 3, hjust = 1.7)
+sp <- sp +  geom_text(data = subset(hudson_unemp2, year=="2015"), 
+                      aes(x = as.factor(year), y = unemployment_rate, label =  paste0(unemployment_rate, "%")), 
+                      size = 3, hjust = -1.5) 
+
+
+sp <- sp+ theme(legend.position = "none", 
+                panel.grid.major.y = element_blank(),
+                panel.grid.minor.y = element_blank(),
+                panel.grid.major.x = element_blank(), 
+                axis.ticks.y = element_blank(),
+                axis.ticks.x = element_blank(), 
+                axis.title.y = element_blank(), 
+                axis.text.y = element_blank(), 
+                plot.title = element_text(size = 18))  
+sp <- sp + ggtitle("Unemployment rate in tracts associated with 1 Journal Square (2017)")
+sp <- sp + xlab("")
+print(sp)
+```
+
+```{r map1, fig.width=9, fig.height=6, warning=F, message=F}
+hudson_unemp4 <- subset(hudson_unemp2, year=="2013")
+nj_merged <- geo_join(nj_h, hudson_unemp4, "GEOID", "id")
+
+#nj_merged <- filter(nj_merged, !is.na(unemployment_rate))
+nj_merged <- nj_merged[!is.na(nj_merged$unemployment_rate),]
+pal_sb <- colorNumeric("Greens", domain=hudson_unemp2$unemployment_rate)
+popup_sb <- paste0(nj_merged$name, ": ", as.character(nj_merged$unemployment_rate))
+
+
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  setView(-74.063644, 40.734330, zoom = 13) %>% 
+  addPolygons(data = nj_merged , 
+              fillColor = ~pal_sb(nj_merged$unemployment_rate), 
+              color = "#444444",
+              fillOpacity = 0.7, 
+              weight = 1, 
+              smoothFactor = 0.2,
+              highlight = highlightOptions(
+                weight = 5,
+                color = "#666",
+                dashArray = "",
+                fillOpacity = 0.7,
+                bringToFront = TRUE),
+              label=popup_sb,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto")) %>%
+  addMarkers(lng=-74.063644, lat=40.734330, popup="1 Journal Square") %>%
+  addLegend(pal = pal_sb, 
+            values = nj_merged$unemployment_rate, 
+            position = "bottomright", 
+            title = "Unemployment rate<br />2013")
+```
+
+----
+
+# 1 Journal Square (2014)
+
+**County:** Hudson
+
+**Census tracts:** 19, 20, 31, 44, 45, 46, 49, 52, 53, 58.01, 60, 67, 68
+
+**Address:** 1 Journal Square, Jersey City, NJ 07306
+
+```{r methodology2, fig.width=9, fig.height=6, message=F, warning=F}
+
+#* A ratio was developed for the census tracts based on the ACS 2007 - 2011 Census data and then applied to the 2013 annual average data for the derivation county.
+
+#* The ACS 2007 - 2011 Census employment and unemployment figures for the tract are divided by the corresponding ACS 2007-2011 Census employment and unemployment data for the derivation county.
+
+#* The resulting ratios are then aplied to the 2013 annual average employment and unemployment data for the derivation county
+
+#* These unemployment and unemployment figures are then summed to determine the labor force figure
+
+#* Finally, the unemployment rate is calculated by dividing the unemployment figure by the labor force figure
+
+#* The qualifying rate using 2013 annual average data is 11.1 percent (1.5 times the US not-seasonally-adjusted unemployment rate for the same time period)
+```
+
+There are 164 census tracts within Hudson County. 
+
+The tracts associated with this project include the areas that have the highest unemployment rates in the county. The tract where 1 Journal Square was constructed tied for 18th with the lowest unemployment rate at 4 percent in 2011. Tract 46 was included by planners within the project borders but is nearly two and a half miles away from the site and had an unemployment rate of 23 percent— the second-worst rate in Hudson county.
+
+According to the application, the combined unemployment rate is greater than or equal to the qualifying rate of 15.6 percent (150 percent of the US rate for the same time period).
+
+
+```{r data_prep2, warning=F, message=F}
+# GEOIDs: 34017001900, 34017002000, 34017003100, 34017004400, 34017004500, 34017004600, 34017004900, 34017005200, 34017005300, 34017005500, 34017005801, 34017006000, 34017006700, 34017006800
+
+hudson_unemployment_2011 <- get_acs(geography="tract", endyear=2011, variables= c("B23025_005E", "B23025_002E"), county = "Hudson", state="NJ")
+hudson_unemployment_2015 <- get_acs(geography="tract", endyear=2015, variables= c("B23025_005E", "B23025_002E"), county = "Hudson", state="NJ")
+
+hudson_unemployment_2011$moe <- NULL
+hudson_unemployment_2015$moe <- NULL
+
+hudson_unemployment_2011 <- spread(hudson_unemployment_2011,variable, estimate )
+hudson_unemployment_2015 <- spread(hudson_unemployment_2015,variable, estimate )
+hudson_unemployment_2011$per_un <- round(hudson_unemployment_2011[,4]/hudson_unemployment_2011[,3]*100,2)
+hudson_unemployment_2015$per_un <- round(hudson_unemployment_2015[,4]/hudson_unemployment_2015[,3]*100,2)
+
+hudson_unemployment_2011 <- filter(hudson_unemployment_2011, GEOID!="34017006900" & GEOID!="34017980100")
+hudson_unemployment_2015 <- filter(hudson_unemployment_2015, GEOID!="34017006900" & GEOID!="34017980100")
+
+hudson_unemployment_2011$rank <- rank(hudson_unemployment_2011$per_un)
+hudson_unemployment_2015$rank <- rank(hudson_unemployment_2015$per_un)
+
+proj1 <- c("34017001900", "34017002000", "34017003100", "34017004400", "34017004500", "34017004600", "34017004900", "34017005200", "34017005300", "34017005500", "34017005801", "34017006000", "34017006700", "34017006800")
+
+hudson_unemployment_2011_sm <- filter(hudson_unemployment_2011, GEOID %in% proj1)
+hudson_unemployment_2015_sm <- filter(hudson_unemployment_2015, GEOID %in% proj1)
+
+colnames(hudson_unemployment_2011_sm) <- c("GEOID", "name", "total", "unemployed", "unemp_rate_2011", "2011_rank")
+colnames(hudson_unemployment_2015_sm) <- c("GEOID", "name", "total", "unemployed", "unemp_rate_2015", "2015_rank")
+
+hudson_unemployment_2011_sm <- select(hudson_unemployment_2011_sm, id=GEOID, name, unemp_rate_2011, `2011_rank`)
+hudson_unemployment_2015_sm <- select(hudson_unemployment_2015_sm, id=GEOID, unemp_rate_2015, `2015_rank`)
+hudson_unemp <- left_join(hudson_unemployment_2011_sm, hudson_unemployment_2015_sm)
+hudson_unemp$diff <- hudson_unemp$unemp_rate_2015$B23025_005 - hudson_unemp$unemp_rate_2011$B23025_005
+
+avg_2011 <- mean(hudson_unemp$unemp_rate_2011$B23025_005)
+avg_2015 <- mean(hudson_unemp$unemp_rate_2015$B23025_005)
+avg_diff <- avg_2015 - avg_2011
+
+hudson_unemp$ur_2011 <- hudson_unemp$unemp_rate_2011$B23025_005 
+hudson_unemp$ur_2015 <- hudson_unemp$unemp_rate_2015$B23025_005 
+
+hudson_unemp$unemp_rate_2011 <- NULL
+hudson_unemp$unemp_rate_2015 <- NULL
+
+hudson_unemp2 <- select(hudson_unemp, name, id, ur_2011, ur_2015)
+hudson_unemp2 <- gather(hudson_unemp2, "year", "unemployment_rate", 3:4)
+hudson_unemp3 <- select(hudson_unemp, tract=name, `unemployment rate 2011`=ur_2011, `unemployment rate 2015`=ur_2015, `2011 rank`=`2011_rank`, `2015 rank`=`2015_rank`)
+hudson_unemp3$tract <- gsub(",.*", "", hudson_unemp3$tract)
+datatable(hudson_unemp3)
+```
+
+According to our calculations (and ignoring margin of error for now), the average unemployment rate in these tracts between 2008 and 2011 was estmated to be `r round(avg_2011,1)` percent. Between 2011 and 2015, that rate changed to `r round(avg_2015,1)` percent. That's a difference of `r round(avg_diff,1)`. 
+
+
+```{r double_check2, fig.width=9, fig.height=6, message=F, warning=F}
+# bringing in jersey city tract boundaries
+
+nj_h <- tracts("NJ", county="Hudson", cb=F)
+nj_hf <- fortify(nj_h, region="GEOID")
+
+nj_hud <- left_join(nj_hf, hudson_unemp2)
+nj_hud <- filter(nj_hud, !is.na(year))
+nj_hud$year <- gsub("ur_", "", nj_hud$year)
+one_journal_square <- c("40.734330, -74.063644")
+
+nj_map <- ggplot()
+nj_map <- nj_map + geom_polygon(data=nj_hf, aes(x=long, y=lat, group=group), fill=NA, color="black", size=.1)
+nj_map <- nj_map + geom_polygon(data=nj_hud, aes(x=long, y=lat, group=group, fill=unemployment_rate), color="black", size=.5)
+nj_map <- nj_map + facet_wrap(~year)
+nj_map <- nj_map + coord_map() 
+nj_map <- nj_map + scale_fill_viridis(option = "heat", direction=-1, name = "Unemployment rate")
+nj_map <- nj_map + scale_color_viridis(option = "heat", direction=-1)
+nj_map <- nj_map + theme_nothing(legend=TRUE) 
+nj_map <- nj_map + labs(x=NULL, y=NULL, title="1 Journal Square (2014)")
+nj_map <- nj_map + theme(panel.grid.major = element_line(colour = NA))
+nj_map <- nj_map + theme(text = element_text(size=15))
+nj_map <- nj_map + theme(plot.title=element_text(face="bold", hjust=.4))
+nj_map <- nj_map + theme(plot.subtitle=element_text(face="italic", size=9, margin=margin(l=20)))
+nj_map <- nj_map + theme(plot.caption=element_text(size=12, margin=margin(t=12), color="#7a7d7e", hjust=0))
+nj_map <- nj_map + theme(legend.key.size = unit(1, "cm"))
+nj_map <- nj_map + annotate("segment", x = -74.063644, xend = -74.035, y = 40.734330, yend = 40.734330, colour = "tomato", size=.5) 
+nj_map <- nj_map + annotate("point", x = -74.063644, y = 40.734330, colour = "lightblue", size = 1) 
+nj_map <- nj_map + annotate("text", x = -74.01, y = 40.734330, label = "1 Journal Square", size=3, colour="gray30") 
+
+print(nj_map)
+
+## slope graph
+
+hudson_unemp2$year <- gsub("ur_", "", hudson_unemp2$year)
+hudson_unemp2$name <- gsub(",.*", "", hudson_unemp2$name)
+hudson_unemp2_proj <- filter(hudson_unemp2, id=="34017001900")
+
+sp <- ggplot(hudson_unemp2) 
+sp <- sp + geom_line(aes(x=as.factor(year), y=unemployment_rate, group=id), size=1)
+sp <- sp + geom_point(aes(x=as.factor(year), y=unemployment_rate), size=3)
+sp <- sp + geom_line(data=hudson_unemp2_proj, aes(x=as.factor(year), y=unemployment_rate, group=id), size=1, color="tomato")
+sp <- sp + geom_point(data=hudson_unemp2_proj, aes(x=as.factor(year), y=unemployment_rate), size=3, color="tomato")
+sp <- sp + theme_minimal()
+sp <- sp + scale_y_log10()
+sp <- sp +geom_text(data = subset(hudson_unemp2, year=="2011"), 
+                    aes(x = as.factor(year), y = unemployment_rate, label = paste0(name, ": ", unemployment_rate, "%")), 
+                    size = 3, hjust = 1.7)
+sp <- sp +  geom_text(data = subset(hudson_unemp2, year=="2015"), 
+                      aes(x = as.factor(year), y = unemployment_rate, label =  paste0(unemployment_rate, "%")), 
+                      size = 3, hjust = -1.5) 
+
+
+sp <- sp+ theme(legend.position = "none", 
+                panel.grid.major.y = element_blank(),
+                panel.grid.minor.y = element_blank(),
+                panel.grid.major.x = element_blank(), 
+                axis.ticks.y = element_blank(),
+                axis.ticks.x = element_blank(), 
+                axis.title.y = element_blank(), 
+                axis.text.y = element_blank(), 
+                plot.title = element_text(size = 18))  
+sp <- sp + ggtitle("Unemployment rate in tracts associated with 1 Journal Square (2014)")
+sp <- sp + xlab("")
+print(sp)
+```
+
+```{r map2, fig.width=9, fig.height=6, warning=F, message=F}
+hudson_unemp4 <- subset(hudson_unemp2, year=="2011")
+nj_merged <- geo_join(nj_h, hudson_unemp4, "GEOID", "id")
+
+#nj_merged <- filter(nj_merged, !is.na(unemployment_rate))
+nj_merged <- nj_merged[!is.na(nj_merged$unemployment_rate),]
+pal_sb <- colorNumeric("Greens", domain=hudson_unemp2$unemployment_rate)
+popup_sb <- paste0(nj_merged$name, ": ", as.character(nj_merged$unemployment_rate))
+
+
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  setView(-74.063644, 40.734330, zoom = 13) %>% 
+  addPolygons(data = nj_merged , 
+              fillColor = ~pal_sb(nj_merged$unemployment_rate), 
+              color = "#444444",
+              fillOpacity = 0.7, 
+              weight = 1, 
+              smoothFactor = 0.2,
+              highlight = highlightOptions(
+                weight = 5,
+                color = "#666",
+                dashArray = "",
+                fillOpacity = 0.7,
+                bringToFront = TRUE),
+              label=popup_sb,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto")) %>%
+  addMarkers(lng=-74.063644, lat=40.734330, popup="1 Journal Square") %>%
+  addLegend(pal = pal_sb, 
+            values = nj_merged$unemployment_rate, 
+            position = "bottomright", 
+            title = "Unemployment rate<br />2011")
+```
+
+----
+
+# 1 65 Bay Street (2015)
+
+**County:** Hudson
+
+**Census tracts:** 44, 45, 46, 52, 53, 55, 56, 58.01, 60, 61, 62, 64, 65, 67, 68, 76
+
+**Address:** 65 Bay Street, Jersey City, NJ
+
+```{r methodology3, fig.width=9, fig.height=6, message=F, warning=F}
+
+#* A ratio is developed for the census tracts based on the ACS 2008 - 2012 Census data and then applied to 2014 annual average data fro the derivation county
+
+#* The ACS 2008 - 2012 Census employment and unemployment figures for the tract are divided by the corresponding ACS 2008 - 2012 Census employment and unemployment data for the derivation county
+
+#* The resulting ratios are then applied to the 2014 annual average employment and  unemployment data for the3 derivation county
+
+#* These employment and unemployoment figures are then summed to determine the labor force figure
+
+#* Finally, the unemployment rate is calculated by dividing the unemployment figure by the labor force figure
+
+#* The qualifying rate using 2014 annual average data is 9.3 percent (1.5 times the US not seasonally adjusted unemployment rate for the same time period)
+```
+
+There are 164 census tracts within Hudson County. 
+
+The tracts associated with this project include the areas with the highest and lowest unemployment rates in the county. The tract where 65 Bay Street was constructed tied for 28th place in lowest unemployment rate at 5 percent in 2012. Tract 53 was included by planners within the project borders but is nearly three away from the site and had an unemployment rate of 24 percent— the worst rate in Hudson county that year.
+
+According to the application, the combined unemployment rate is greater than or equal to the qualifying rate of 9.8 percent (150 percent of the US rate for the same time period).
+
+
+```{r data_prep3, warning=F, message=F}
+# GEOIDs: 34017004400, 34017004500, 34017004600, 34017005200, 34017005300, 34017005500, 34017005600, 34017005801, 34017006000, 34017006100, 34017006200, 34017006400, 34017006500, 34017006700, 34017006800, 34017007600 
+
+hudson_unemployment_2012 <- get_acs(geography="tract", endyear=2012, variables= c("B23025_005E", "B23025_002E"), county = "Hudson", state="NJ")
+hudson_unemployment_2015 <- get_acs(geography="tract", endyear=2015, variables= c("B23025_005E", "B23025_002E"), county = "Hudson", state="NJ")
+
+hudson_unemployment_2012$moe <- NULL
+hudson_unemployment_2015$moe <- NULL
+
+hudson_unemployment_2012 <- spread(hudson_unemployment_2012,variable, estimate )
+hudson_unemployment_2015 <- spread(hudson_unemployment_2015,variable, estimate )
+hudson_unemployment_2012$per_un <- round(hudson_unemployment_2012[,4]/hudson_unemployment_2012[,3]*100,2)
+hudson_unemployment_2015$per_un <- round(hudson_unemployment_2015[,4]/hudson_unemployment_2015[,3]*100,2)
+
+hudson_unemployment_2012 <- filter(hudson_unemployment_2012, GEOID!="34017006900" & GEOID!="34017980100")
+hudson_unemployment_2015 <- filter(hudson_unemployment_2015, GEOID!="34017006900" & GEOID!="34017980100")
+
+hudson_unemployment_2012$rank <- rank(hudson_unemployment_2012$per_un)
+hudson_unemployment_2015$rank <- rank(hudson_unemployment_2015$per_un)
+
+proj1 <- c("34017004400", "34017004500", "34017004600", "34017005200", "34017005300", "34017005500", "34017005600", "34017005801", "34017006000", "34017006100", "34017006200", "34017006400", "34017006500", "34017006700", "34017006800", "34017007600")
+
+hudson_unemployment_2012_sm <- filter(hudson_unemployment_2012, GEOID %in% proj1)
+hudson_unemployment_2015_sm <- filter(hudson_unemployment_2015, GEOID %in% proj1)
+
+colnames(hudson_unemployment_2012_sm) <- c("GEOID", "name", "total", "unemployed", "unemp_rate_2012", "2012_rank")
+colnames(hudson_unemployment_2015_sm) <- c("GEOID", "name", "total", "unemployed", "unemp_rate_2015", "2015_rank")
+
+hudson_unemployment_2012_sm <- select(hudson_unemployment_2012_sm, id=GEOID, name, unemp_rate_2012, `2012_rank`)
+hudson_unemployment_2015_sm <- select(hudson_unemployment_2015_sm, id=GEOID, unemp_rate_2015, `2015_rank`)
+hudson_unemp <- left_join(hudson_unemployment_2012_sm, hudson_unemployment_2015_sm)
+hudson_unemp$diff <- hudson_unemp$unemp_rate_2015$B23025_005 - hudson_unemp$unemp_rate_2012$B23025_005
+
+avg_2012 <- mean(hudson_unemp$unemp_rate_2012$B23025_005)
+avg_2015 <- mean(hudson_unemp$unemp_rate_2015$B23025_005)
+avg_diff <- avg_2015 - avg_2012
+
+hudson_unemp$ur_2012 <- hudson_unemp$unemp_rate_2012$B23025_005 
+hudson_unemp$ur_2015 <- hudson_unemp$unemp_rate_2015$B23025_005 
+
+hudson_unemp$unemp_rate_2012 <- NULL
+hudson_unemp$unemp_rate_2015 <- NULL
+
+hudson_unemp2 <- select(hudson_unemp, name, id, ur_2012, ur_2015)
+hudson_unemp2 <- gather(hudson_unemp2, "year", "unemployment_rate", 3:4)
+hudson_unemp3 <- select(hudson_unemp, tract=name, `unemployment rate 2012`=ur_2012, `unemployment rate 2015`=ur_2015, `2012 rank`=`2012_rank`, `2015 rank`=`2015_rank`)
+hudson_unemp3$tract <- gsub(",.*", "", hudson_unemp3$tract)
+datatable(hudson_unemp3)
+```
+
+According to our calculations (and ignoring margin of error for now), the average unemployment rate in these tracts between 2008 and 2012 was estmated to be `r round(avg_2012,1)` percent. Between 2012 and 2015, that rate changed to `r round(avg_2015,1)` percent. That's a difference of `r round(avg_diff,1)`. 
+
+
+```{r double_check3, fig.width=9, fig.height=6, message=F, warning=F}
+# bringing in jersey city tract boundaries
+
+nj_h <- tracts("NJ", county="Hudson", cb=F)
+nj_hf <- fortify(nj_h, region="GEOID")
+
+nj_hud <- left_join(nj_hf, hudson_unemp2)
+nj_hud <- filter(nj_hud, !is.na(year))
+nj_hud$year <- gsub("ur_", "", nj_hud$year)
+
+nj_map <- ggplot()
+nj_map <- nj_map + geom_polygon(data=nj_hf, aes(x=long, y=lat, group=group), fill=NA, color="black", size=.1)
+nj_map <- nj_map + geom_polygon(data=nj_hud, aes(x=long, y=lat, group=group, fill=unemployment_rate), color="black", size=.5)
+nj_map <- nj_map + facet_wrap(~year)
+nj_map <- nj_map + coord_map() 
+nj_map <- nj_map + scale_fill_viridis(option = "heat", direction=-1, name = "Unemployment rate")
+nj_map <- nj_map + scale_color_viridis(option = "heat", direction=-1)
+nj_map <- nj_map + theme_nothing(legend=TRUE) 
+nj_map <- nj_map + labs(x=NULL, y=NULL, title="65 Bay Street (2015)")
+nj_map <- nj_map + theme(panel.grid.major = element_line(colour = NA))
+nj_map <- nj_map + theme(text = element_text(size=15))
+nj_map <- nj_map + theme(plot.title=element_text(face="bold", hjust=.4))
+nj_map <- nj_map + theme(plot.subtitle=element_text(face="italic", size=9, margin=margin(l=20)))
+nj_map <- nj_map + theme(plot.caption=element_text(size=12, margin=margin(t=12), color="#7a7d7e", hjust=0))
+nj_map <- nj_map + theme(legend.key.size = unit(1, "cm"))
+nj_map <- nj_map + annotate("segment", x = -74.03577, xend = -74.005, y = 40.72, yend = 40.72, colour = "tomato", size=.5) 
+nj_map <- nj_map + annotate("point", x = -74.03577, y = 40.72, colour = "lightblue", size = 1) 
+nj_map <- nj_map + annotate("text", x = -73.98217, y = 40.72, label = "65 Bay Street", size=3, colour="gray30") 
+
+print(nj_map)
+
+## slope graph
+
+hudson_unemp2$year <- gsub("ur_", "", hudson_unemp2$year)
+hudson_unemp2$name <- gsub(",.*", "", hudson_unemp2$name)
+hudson_unemp2_proj <- filter(hudson_unemp2, id=="34017007600")
+
+sp <- ggplot(hudson_unemp2) 
+sp <- sp + geom_line(aes(x=as.factor(year), y=unemployment_rate, group=id), size=1)
+sp <- sp + geom_point(aes(x=as.factor(year), y=unemployment_rate), size=3)
+sp <- sp + geom_line(data=hudson_unemp2_proj, aes(x=as.factor(year), y=unemployment_rate, group=id), size=1, color="tomato")
+sp <- sp + geom_point(data=hudson_unemp2_proj, aes(x=as.factor(year), y=unemployment_rate), size=3, color="tomato")
+sp <- sp + theme_minimal()
+sp <- sp + scale_y_log10()
+sp <- sp +geom_text(data = subset(hudson_unemp2, year=="2012"), 
+                    aes(x = as.factor(year), y = unemployment_rate, label = paste0(name, ": ", unemployment_rate, "%")), 
+                    size = 3, hjust = 1.7)
+sp <- sp +  geom_text(data = subset(hudson_unemp2, year=="2015"), 
+                      aes(x = as.factor(year), y = unemployment_rate, label =  paste0(unemployment_rate, "%")), 
+                      size = 3, hjust = -1.5) 
+
+
+sp <- sp+ theme(legend.position = "none", 
+                panel.grid.major.y = element_blank(),
+                panel.grid.minor.y = element_blank(),
+                panel.grid.major.x = element_blank(), 
+                axis.ticks.y = element_blank(),
+                axis.ticks.x = element_blank(), 
+                axis.title.y = element_blank(), 
+                axis.text.y = element_blank(), 
+                plot.title = element_text(size = 18))  
+sp <- sp + ggtitle("Unemployment rate in tracts associated with 65 Bay Street (2015)")
+sp <- sp + xlab("")
+print(sp)
+```
+
+
+```{r map3, fig.width=9, fig.height=6, warning=F, message=F}
+hudson_unemp4 <- subset(hudson_unemp2, year=="2012")
+nj_merged <- geo_join(nj_h, hudson_unemp4, "GEOID", "id")
+
+#nj_merged <- filter(nj_merged, !is.na(unemployment_rate))
+nj_merged <- nj_merged[!is.na(nj_merged$unemployment_rate),]
+pal_sb <- colorNumeric("Greens", domain=hudson_unemp2$unemployment_rate)
+popup_sb <- paste0(nj_merged$name, ": ", as.character(nj_merged$unemployment_rate))
+
+
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  setView(-74.03577, 40.72,, zoom = 13) %>% 
+  addPolygons(data = nj_merged , 
+              fillColor = ~pal_sb(nj_merged$unemployment_rate), 
+              color = "#444444",
+              fillOpacity = 0.7, 
+              weight = 1, 
+              smoothFactor = 0.2,
+              highlight = highlightOptions(
+                weight = 5,
+                color = "#666",
+                dashArray = "",
+                fillOpacity = 0.7,
+                bringToFront = TRUE),
+              label=popup_sb,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto")) %>%
+  addMarkers(lng=-74.03577, lat=40.72, popup="65 Bay Street") %>%
+  addLegend(pal = pal_sb, 
+            values = nj_merged$unemployment_rate, 
+            position = "bottomright", 
+            title = "Unemployment rate<br />2012")
+```
+
+# Calls to police by census tract for 65 Bay Street
+
+```{r calls_and_shots, fig.height=6, fig.width=9, warning=F, message=F}
+police_calls <- read_csv("data/jcpd-all.csv")
+shootings <- read_csv("data/jerseycity2015shootings-use.csv")
+
+
+shootings$datetime <- mdy_hm(shootings$datetime)
+
+
+police_calls$datetime <- mdy_hm(police_calls$`Time Received`)
+
+police_calls$blah <- ifelse(is.na(police_calls$datetime),police_calls$`Time Received`, "" )
+
+police_calls$datetime2 <- mdy_hms(police_calls$blah)
+
+police_calls$datetime3 <- ifelse(is.na(police_calls$datetime),as.character(police_calls$datetime2), as.character(police_calls$datetime))
+police_calls$datetime3 <- ymd_hms(police_calls$datetime3)
+police_calls$year <- year(police_calls$datetime3)
+police_calls_2015 <- subset(police_calls, year==2015)
+
+police_calls_2015 <- police_calls_2015 [!duplicated(police_calls_2015$`Event Number`),]
+
+
+calls <- c("BURG ALARM COMMERCIAL PROP", "ASSAULT NO WEAPON", "USE/SALE OF DRUGS", "THEFT PROP FROM VEHICLE", "MOTOR VEHICLE THEFT", "THEFT FROM PERSON",
+           "ROB COMERCIAL", "FOUND CDS/PARAPHERNALIA", "HOMICIDE")
+
+police_calls_2015_sub <- police_calls_2015 %>%
+  filter(str_detect(`Call Code Description`, "BURG ALARM COMMERCIAL PROP|ASSAULT NO WEAPON|USE/SALE OF DRUGS|THEFT PROP FROM VEHICLE|MOTOR VEHICLE THEFT|THEFT FROM PERSON|ROB COMERCIAL|FOUND CDS/PARAPHERNALIA|HOMICIDE"))
+
+police_calls_2015_sub$type <- gsub(";.*", "", police_calls_2015_sub$`Call Code Description`)
+police_calls_2015_sub <- select(police_calls_2015_sub, type, date=datetime3, lat=LATITUDE, lon=LONGITUDE)
+shootings_2015_sub <- shootings
+shootings_2015_sub$shooting_type <- paste("Shooting:", shootings_2015_sub$shooting_type)
+shootings_2015_sub <- select(shootings, type=shooting_type, date=datetime, lat=latitude, lon=longitude)
+
+sub_2015 <- rbind(police_calls_2015_sub, shootings_2015_sub)
+
+coords <- sub_2015[c("lon", "lat")]
+
+sp <- SpatialPoints(coords)
+#plot(nj_h)
+#plot(sp, col="red", add=TRUE)
+
+proj4string(sp) <- "+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
+#proj4string(sp)
+
+by_tract <- over(sp, nj_h)
+
+sub_2015 <- cbind(sub_2015, by_tract)
+
+tract_totals <- sub_2015 %>%
+  group_by(GEOID, NAMELSAD, type) %>%
+  summarize(total=n())
+
+tract_totals <- tract_totals %>%
+  group_by(type) %>%
+  mutate(percent=round(total/sum(total, na.rm=T)*100,2))
+
+tract_totals$type <- ifelse(tract_totals$type=="Fatal", "Shooting: Fatal", tract_totals$type)
+tract_totals$type <- ifelse(tract_totals$type=="Non-fatal", "Shooting: Non-fatal", tract_totals$type)
+
+tract_totals <- filter(tract_totals, !is.na(GEOID))
+
+proj1 <- c("34017004400", "34017004500", "34017004600", "34017005200", "34017005300", "34017005500", "34017005600", "34017005801", "34017006000", "34017006100", "34017006200", "34017006400", "34017006500", "34017006700", "34017006800", "34017007600")
+
+tract_totals_a  <- filter(tract_totals, GEOID %in% proj1)
+
+shootings_tracts <- filter(tract_totals_a, type=="Shooting: Fatal" | type=="Shooting: Non-fatal")
+tract_totals_a <- filter(tract_totals_a, type!="Shooting: Fatal" & type!="Shooting: Non-fatal")
+
+nj_h <- tracts("NJ", county="Hudson", cb=F)
+nj_hf <- fortify(nj_h, region="GEOID")
+
+
+nj_tracts <- left_join(nj_hf, tract_totals_a, by=c("id"="GEOID"))
+
+#nj_tracts <- filter(nj_tracts, !is.na(year))
+nj_tracts <- nj_tracts[!is.na(nj_tracts$percent),]
+
+#nj_tracts$year <- gsub("ur_", "", nj_hud$year)
+
+nj_map <- ggplot()
+#nj_map <- nj_map + geom_polygon(data=nj_hf, aes(x=long, y=lat, group=group), fill=NA, color="black", size=.1)
+nj_map <- nj_map + geom_polygon(data=nj_tracts, aes(x=long, y=lat, group=group, fill=percent), color="black", size=.5)
+nj_map <- nj_map + facet_wrap(~type, ncol=2)
+nj_map <- nj_map + coord_map() 
+nj_map <- nj_map + scale_fill_viridis(option = "heat", direction=-1, name = "Percent of crime calls")
+nj_map <- nj_map + scale_color_viridis(option = "heat", direction=-1)
+nj_map <- nj_map + theme_nothing(legend=TRUE) 
+nj_map <- nj_map + labs(x=NULL, y=NULL, title="Percent of crime calls in 2015")
+nj_map <- nj_map + theme(panel.grid.major = element_line(colour = NA))
+nj_map <- nj_map + theme(text = element_text(size=15))
+nj_map <- nj_map + theme(plot.title=element_text(face="bold", hjust=.4))
+nj_map <- nj_map + theme(plot.subtitle=element_text(face="italic", size=9, margin=margin(l=20)))
+nj_map <- nj_map + theme(plot.caption=element_text(size=12, margin=margin(t=12), color="#7a7d7e", hjust=0))
+nj_map <- nj_map + theme(legend.key.size = unit(1, "cm"))
+nj_map <- nj_map + annotate("segment", x = -74.03577, xend = -74.005, y = 40.72, yend = 40.72, colour = "tomato", size=.5) 
+nj_map <- nj_map + annotate("point", x = -74.03577, y = 40.72, colour = "lightblue", size = 1) 
+nj_map <- nj_map + annotate("text", x = -73.99217, y = 40.72, label = "65 Bay Street", size=3, colour="gray30") 
+
+print(nj_map)
+datatable(tract_totals_a[,2:5])
+
+
+```
+
+```{r shootings, fig.width=9, fig.height=6, warning=F, message=F}
+
+
+nj_tracts <- left_join(nj_hf, shootings_tracts, by=c("id"="GEOID"))
+
+#nj_tracts <- filter(nj_tracts, !is.na(year))
+nj_tracts <- nj_tracts[!is.na(nj_tracts$percent),]
+
+#nj_tracts$year <- gsub("ur_", "", nj_hud$year)
+
+nj_map <- ggplot()
+#nj_map <- nj_map + geom_polygon(data=nj_hf, aes(x=long, y=lat, group=group), fill=NA, color="black", size=.1)
+nj_map <- nj_map + geom_polygon(data=nj_tracts, aes(x=long, y=lat, group=group, fill=percent), color="black", size=.5)
+nj_map <- nj_map + facet_wrap(~type, ncol=2)
+nj_map <- nj_map + coord_map() 
+nj_map <- nj_map + scale_fill_viridis(option = "heat", direction=-1, name = "Percent of shootings")
+nj_map <- nj_map + scale_color_viridis(option = "heat", direction=-1)
+nj_map <- nj_map + theme_nothing(legend=TRUE) 
+nj_map <- nj_map + labs(x=NULL, y=NULL, title="Shootings in 2015")
+nj_map <- nj_map + theme(panel.grid.major = element_line(colour = NA))
+nj_map <- nj_map + theme(text = element_text(size=15))
+nj_map <- nj_map + theme(plot.title=element_text(face="bold", hjust=.4))
+nj_map <- nj_map + theme(plot.subtitle=element_text(face="italic", size=9, margin=margin(l=20)))
+nj_map <- nj_map + theme(plot.caption=element_text(size=12, margin=margin(t=12), color="#7a7d7e", hjust=0))
+nj_map <- nj_map + theme(legend.key.size = unit(1, "cm"))
+nj_map <- nj_map + annotate("segment", x = -74.03577, xend = -74.005, y = 40.72, yend = 40.72, colour = "tomato", size=.5) 
+nj_map <- nj_map + annotate("point", x = -74.03577, y = 40.72, colour = "lightblue", size = 1) 
+nj_map <- nj_map + annotate("text", x = -73.99217, y = 40.72, label = "65 Bay Street", size=3, colour="gray30") 
+
+print(nj_map)
+datatable(shootings_tracts[,2:5])
+
+```
+
+```{r one_more_map, fig.width=9, fig.height=6, warning=F, message=F}
+
+cof <- colorFactor(c("red", "purple"), domain=c("Non-fatal", "Fatal"))
+# mapping based on type
+
+leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  setView(-74.03577, 40.72, zoom = 13) %>% 
+  addPolygons(data = nj_merged,
+              group="Unemployment",
+              fillColor = ~pal_sb(nj_merged$unemployment_rate), 
+              color = "#444444",
+              fillOpacity = 0.4, 
+              weight = 1, 
+              smoothFactor = 0.2,
+              highlight = highlightOptions(
+                weight = 5,
+                color = "#666",
+                dashArray = "",
+                fillOpacity = 0.7,
+                bringToFront = TRUE),
+              label=popup_sb,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto")) %>%
+  addMarkers(lng=-74.03577, lat=40.72, popup="65 Bay Street") %>%
+  addLegend(pal = pal_sb, 
+            values = nj_merged$unemployment_rate, 
+            position = "bottomright", 
+            title = "Unemployment rate<br />2012") %>% 
+  addCircleMarkers(data=shootings, ~longitude, ~latitude, popup=shootings$location, weight = 3, radius=4, color=~cof(shooting_type), stroke = F, fillOpacity = 0.5, group="Shootings")  %>%
+  addLegend("bottomright", colors= c("red", "purple"), labels=c("Fatal", "Non-fatal"), title="Shootings") %>%
+    addLayersControl(
+    overlayGroups = c("Unemployment", "Shootings"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+```
