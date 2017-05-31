@@ -7,7 +7,9 @@ output:
   pdf_document: default
 ---
   
-This is a more-focused geospatial analysis of unemployment rates in the census tracts chosen specifically by developers compared with the tracts they originally pitched to the state. They pitched 26 census tracts to be included but 23 percent of them did not exist. They also mistakenly thought the project site was on census tract 26, which also does not exist in Hudson county.
+This is a more-focused geospatial analysis of unemployment rates in the census tracts originally pitched by developers to the state comopared to the final map allowed by the state.
+
+They pitched 26 census tracts to be included but six of these (23 percent) did not exist. They also mistakenly thought the project site was on census tract 26, which also does not exist in Hudson county.
 
 The numbers are bucketed and colors are chosen randomly for so it would be easier for graphics to edit.
 
@@ -130,7 +132,7 @@ nj_map <- nj_map + annotate("text", x = -73.98217, y = 40.72, label = "65 Bay St
 
 
 print(nj_map)
-ggsave(nj_map, device="pdf", "map2a.pdf")
+#ggsave(nj_map, device="pdf", "map2a.pdf")
 
 nj_map <- ggplot()
 nj_map <- nj_map + geom_polygon(data=nj_hf, aes(x=long, y=lat, group=group), fill=NA, color="black", size=.1)
@@ -155,7 +157,7 @@ nj_map <- nj_map + annotate("text", x = -73.98217, y = 40.72, label = "65 Bay St
 
 
 print(nj_map)
-ggsave(nj_map, device="pdf", "map2b.pdf")
+#ggsave(nj_map, device="pdf", "map2b.pdf")
 
 ```
 
