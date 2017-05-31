@@ -4,7 +4,7 @@
 
 Summary and link to story to come
 
-# About this repo
+# About the folders in this repo
 
 * **[data](data)** - Raw and summarized data on shootings and service calls from the Jersey City open data portal
 * **[map_output](map_output)** - PDF output of maps made with ggplot2 used as basis for WP graphics
@@ -13,9 +13,9 @@ Summary and link to story to come
 
 # Notebooks
 
-* Profiles on Jersey city project tracts - Aggregated information geolocated to specific census tracts to assist with reporting
-* Comparing economic conditions in Jersey city - Exploratory data visualizations 
-* Comparing economic conditions in Jersey city (2) - More focused exploratory data visualizations 
+* [Profiles on Jersey city project tracts](http://wpinvestigates.github.io/kushner_eb5_census) - Aggregated information geolocated to specific census tracts to assist with reporting
+* [Comparing economic conditions in Jersey city](http://wpinvestigates.github.io/kushner_eb5_census/tracts.html) - Exploratory data visualizations 
+* [Comparing economic conditions in Jersey city (2)](http://wpinvestigates.github.io/kushner_eb5_census/tracts_two.html) - More focused exploratory data visualizations 
 
 
 

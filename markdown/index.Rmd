@@ -6,11 +6,21 @@ output:
     code_folding: hide
 ---
 
+This geospatial analysis of Jersey City census tracts in Hudson county was used to assist the reporting of this story.
+
+Two projects from Jared Kushner's development company received millions of federal funding designed to benefit poor areas. To qualify for low-cost financing, the Kushner group daisy-chained the low-unemployment rate area around the tower site to neighborhoods with poor neighborhoods almost four miles away.
+
+This analysis looks at census tracts that Kushner's development group said would benefit from their project in their proposal. It compares the 5-year ACS data used in their methodology with the most recent year available (2015). 
+
 ```{r setup, include=FALSE}
+# I use the development version of ggplot2
+# install.packages("devtools")
+# devtools::install_github("tidyverse/ggplot2")
+
 library(tidycensus)
 library(tidyverse)
-source("keys.R")
-source("theme_nothing.R")
+source("../scripts/keys.R")
+source("../scripts/theme_nothing.R")
 library(tigris)
 #library(sf)
 library(viridis)
@@ -27,6 +37,8 @@ library(dplyr)
 library(stringr)
 library(sp)
 
+
+
 ```
 
 # 1 Journal Square (2017)
@@ -36,6 +48,8 @@ library(sp)
 **Census tracts:** 19, 46, 53, 66, 67, 71
 
 **Address:** 1 Journal Square, Jersey City, NJ 07306
+
+The developer's methodology can be revealed by clicking the 'code' button on the right.
 
 ```{r methodology1, fig.width=9, fig.height=6, message=F, warning=F}
 
@@ -52,11 +66,7 @@ library(sp)
 #* The qualifying rate using 2015 annual average data is 8.0 percent (1.5 times the US not seasonally adjusted unemployment rate for the same time period)
 ```
 
-There are 164 census tracts within Hudson County. 
-
-The tracts associated with this project include the areas with the highest and lowest unemployment rates in the county. The tract where 1 Journal Square was constructed tied for 62nd place in lowest unemployment rate at 8.6 percent in 2013. Tract 67 was included by planners within the project borders but is nearly two and a half miles away from the site and had an unemployment rate of 24 percent— the second worst rate in the county.
-
-According to the application, the combined unemployment rate is greater than or equal to the qualifying rate of 8 percent (150 percent of the US rate for the same time period).
+This analysis seeks to replicate their process as closely as possible.
 
 ```{r data_prep, warning=F, message=F}
 # GEOIDs: 34017001900, 34017004600, 34017005300, 34017006600, 34017006700, 34017007100
@@ -108,8 +118,15 @@ hudson_unemp3$tract <- gsub(",.*", "", hudson_unemp3$tract)
 datatable(hudson_unemp3)
 ```
 
-According to our calculations (and ignoring margin of error for now), the average unemployment rate in these tracts between 2007 and 2013 was estmated to be `r round(avg_2013,1)` percent. Between 2013 and 2015, that rate changed to `r round(avg_2015,1)` percent. That's a difference of `r round(avg_diff,1)`. 
+There are `r nrow(hudson_unemployment_2013)` census tracts within Hudson County. 
 
+The tracts associated with this project include the areas with the highest and lowest unemployment rates in the county. The tract where 1 Journal Square was constructed tied for 62nd place in lowest unemployment rate at 8.6 percent in 2013. Tract 67 was included by planners within the project borders but is nearly two and a half miles away from the site and had an unemployment rate of 24 percent— the second worst rate in the county.
+
+According to the application, the combined unemployment rate is greater than or equal to the qualifying rate of 8 percent (150 percent of the US rate for the same time period).
+
+According to our calculations (and setting aside margin of error for now), the average unemployment rate in these tracts between 2007 and 2013 was estmated to be `r round(avg_2013,1)` percent. Between 2013 and 2015, that rate changed to `r round(avg_2015,1)` percent. 
+
+**That's a difference of `r round(avg_diff,1)`.**
 
 ```{r double_check, fig.width=9, fig.height=6, message=F, warning=F}
 # bringing in jersey city tract boundaries
@@ -217,195 +234,6 @@ leaflet() %>%
 
 ----
 
-# 1 Journal Square (2014)
-
-**County:** Hudson
-
-**Census tracts:** 19, 20, 31, 44, 45, 46, 49, 52, 53, 58.01, 60, 67, 68
-
-**Address:** 1 Journal Square, Jersey City, NJ 07306
-
-```{r methodology2, fig.width=9, fig.height=6, message=F, warning=F}
-
-#* A ratio was developed for the census tracts based on the ACS 2007 - 2011 Census data and then applied to the 2013 annual average data for the derivation county.
-
-#* The ACS 2007 - 2011 Census employment and unemployment figures for the tract are divided by the corresponding ACS 2007-2011 Census employment and unemployment data for the derivation county.
-
-#* The resulting ratios are then aplied to the 2013 annual average employment and unemployment data for the derivation county
-
-#* These unemployment and unemployment figures are then summed to determine the labor force figure
-
-#* Finally, the unemployment rate is calculated by dividing the unemployment figure by the labor force figure
-
-#* The qualifying rate using 2013 annual average data is 11.1 percent (1.5 times the US not-seasonally-adjusted unemployment rate for the same time period)
-```
-
-There are 164 census tracts within Hudson County. 
-
-The tracts associated with this project include the areas that have the highest unemployment rates in the county. The tract where 1 Journal Square was constructed tied for 18th with the lowest unemployment rate at 4 percent in 2011. Tract 46 was included by planners within the project borders but is nearly two and a half miles away from the site and had an unemployment rate of 23 percent— the second-worst rate in Hudson county.
-
-According to the application, the combined unemployment rate is greater than or equal to the qualifying rate of 15.6 percent (150 percent of the US rate for the same time period).
-
-
-```{r data_prep2, warning=F, message=F}
-# GEOIDs: 34017001900, 34017002000, 34017003100, 34017004400, 34017004500, 34017004600, 34017004900, 34017005200, 34017005300, 34017005500, 34017005801, 34017006000, 34017006700, 34017006800
-
-hudson_unemployment_2011 <- get_acs(geography="tract", endyear=2011, variables= c("B23025_005E", "B23025_002E"), county = "Hudson", state="NJ")
-hudson_unemployment_2015 <- get_acs(geography="tract", endyear=2015, variables= c("B23025_005E", "B23025_002E"), county = "Hudson", state="NJ")
-
-hudson_unemployment_2011$moe <- NULL
-hudson_unemployment_2015$moe <- NULL
-
-hudson_unemployment_2011 <- spread(hudson_unemployment_2011,variable, estimate )
-hudson_unemployment_2015 <- spread(hudson_unemployment_2015,variable, estimate )
-hudson_unemployment_2011$per_un <- round(hudson_unemployment_2011[,4]/hudson_unemployment_2011[,3]*100,2)
-hudson_unemployment_2015$per_un <- round(hudson_unemployment_2015[,4]/hudson_unemployment_2015[,3]*100,2)
-
-hudson_unemployment_2011 <- filter(hudson_unemployment_2011, GEOID!="34017006900" & GEOID!="34017980100")
-hudson_unemployment_2015 <- filter(hudson_unemployment_2015, GEOID!="34017006900" & GEOID!="34017980100")
-
-hudson_unemployment_2011$rank <- rank(hudson_unemployment_2011$per_un)
-hudson_unemployment_2015$rank <- rank(hudson_unemployment_2015$per_un)
-
-proj1 <- c("34017001900", "34017002000", "34017003100", "34017004400", "34017004500", "34017004600", "34017004900", "34017005200", "34017005300", "34017005500", "34017005801", "34017006000", "34017006700", "34017006800")
-
-hudson_unemployment_2011_sm <- filter(hudson_unemployment_2011, GEOID %in% proj1)
-hudson_unemployment_2015_sm <- filter(hudson_unemployment_2015, GEOID %in% proj1)
-
-colnames(hudson_unemployment_2011_sm) <- c("GEOID", "name", "total", "unemployed", "unemp_rate_2011", "2011_rank")
-colnames(hudson_unemployment_2015_sm) <- c("GEOID", "name", "total", "unemployed", "unemp_rate_2015", "2015_rank")
-
-hudson_unemployment_2011_sm <- select(hudson_unemployment_2011_sm, id=GEOID, name, unemp_rate_2011, `2011_rank`)
-hudson_unemployment_2015_sm <- select(hudson_unemployment_2015_sm, id=GEOID, unemp_rate_2015, `2015_rank`)
-hudson_unemp <- left_join(hudson_unemployment_2011_sm, hudson_unemployment_2015_sm)
-hudson_unemp$diff <- hudson_unemp$unemp_rate_2015$B23025_005 - hudson_unemp$unemp_rate_2011$B23025_005
-
-avg_2011 <- mean(hudson_unemp$unemp_rate_2011$B23025_005)
-avg_2015 <- mean(hudson_unemp$unemp_rate_2015$B23025_005)
-avg_diff <- avg_2015 - avg_2011
-
-hudson_unemp$ur_2011 <- hudson_unemp$unemp_rate_2011$B23025_005 
-hudson_unemp$ur_2015 <- hudson_unemp$unemp_rate_2015$B23025_005 
-
-hudson_unemp$unemp_rate_2011 <- NULL
-hudson_unemp$unemp_rate_2015 <- NULL
-
-hudson_unemp2 <- select(hudson_unemp, name, id, ur_2011, ur_2015)
-hudson_unemp2 <- gather(hudson_unemp2, "year", "unemployment_rate", 3:4)
-hudson_unemp3 <- select(hudson_unemp, tract=name, `unemployment rate 2011`=ur_2011, `unemployment rate 2015`=ur_2015, `2011 rank`=`2011_rank`, `2015 rank`=`2015_rank`)
-hudson_unemp3$tract <- gsub(",.*", "", hudson_unemp3$tract)
-datatable(hudson_unemp3)
-```
-
-According to our calculations (and ignoring margin of error for now), the average unemployment rate in these tracts between 2008 and 2011 was estmated to be `r round(avg_2011,1)` percent. Between 2011 and 2015, that rate changed to `r round(avg_2015,1)` percent. That's a difference of `r round(avg_diff,1)`. 
-
-
-```{r double_check2, fig.width=9, fig.height=6, message=F, warning=F}
-# bringing in jersey city tract boundaries
-
-nj_h <- tracts("NJ", county="Hudson", cb=F)
-nj_hf <- fortify(nj_h, region="GEOID")
-
-nj_hud <- left_join(nj_hf, hudson_unemp2)
-nj_hud <- filter(nj_hud, !is.na(year))
-nj_hud$year <- gsub("ur_", "", nj_hud$year)
-one_journal_square <- c("40.734330, -74.063644")
-
-nj_map <- ggplot()
-nj_map <- nj_map + geom_polygon(data=nj_hf, aes(x=long, y=lat, group=group), fill=NA, color="black", size=.1)
-nj_map <- nj_map + geom_polygon(data=nj_hud, aes(x=long, y=lat, group=group, fill=unemployment_rate), color="black", size=.5)
-nj_map <- nj_map + facet_wrap(~year)
-nj_map <- nj_map + coord_map() 
-nj_map <- nj_map + scale_fill_viridis(option = "heat", direction=-1, name = "Unemployment rate")
-nj_map <- nj_map + scale_color_viridis(option = "heat", direction=-1)
-nj_map <- nj_map + theme_nothing(legend=TRUE) 
-nj_map <- nj_map + labs(x=NULL, y=NULL, title="1 Journal Square (2014)")
-nj_map <- nj_map + theme(panel.grid.major = element_line(colour = NA))
-nj_map <- nj_map + theme(text = element_text(size=15))
-nj_map <- nj_map + theme(plot.title=element_text(face="bold", hjust=.4))
-nj_map <- nj_map + theme(plot.subtitle=element_text(face="italic", size=9, margin=margin(l=20)))
-nj_map <- nj_map + theme(plot.caption=element_text(size=12, margin=margin(t=12), color="#7a7d7e", hjust=0))
-nj_map <- nj_map + theme(legend.key.size = unit(1, "cm"))
-nj_map <- nj_map + annotate("segment", x = -74.063644, xend = -74.035, y = 40.734330, yend = 40.734330, colour = "tomato", size=.5) 
-nj_map <- nj_map + annotate("point", x = -74.063644, y = 40.734330, colour = "lightblue", size = 1) 
-nj_map <- nj_map + annotate("text", x = -74.01, y = 40.734330, label = "1 Journal Square", size=3, colour="gray30") 
-
-print(nj_map)
-
-## slope graph
-
-hudson_unemp2$year <- gsub("ur_", "", hudson_unemp2$year)
-hudson_unemp2$name <- gsub(",.*", "", hudson_unemp2$name)
-hudson_unemp2_proj <- filter(hudson_unemp2, id=="34017001900")
-
-sp <- ggplot(hudson_unemp2) 
-sp <- sp + geom_line(aes(x=as.factor(year), y=unemployment_rate, group=id), size=1)
-sp <- sp + geom_point(aes(x=as.factor(year), y=unemployment_rate), size=3)
-sp <- sp + geom_line(data=hudson_unemp2_proj, aes(x=as.factor(year), y=unemployment_rate, group=id), size=1, color="tomato")
-sp <- sp + geom_point(data=hudson_unemp2_proj, aes(x=as.factor(year), y=unemployment_rate), size=3, color="tomato")
-sp <- sp + theme_minimal()
-sp <- sp + scale_y_log10()
-sp <- sp +geom_text(data = subset(hudson_unemp2, year=="2011"), 
-                    aes(x = as.factor(year), y = unemployment_rate, label = paste0(name, ": ", unemployment_rate, "%")), 
-                    size = 3, hjust = 1.7)
-sp <- sp +  geom_text(data = subset(hudson_unemp2, year=="2015"), 
-                      aes(x = as.factor(year), y = unemployment_rate, label =  paste0(unemployment_rate, "%")), 
-                      size = 3, hjust = -1.5) 
-
-
-sp <- sp+ theme(legend.position = "none", 
-                panel.grid.major.y = element_blank(),
-                panel.grid.minor.y = element_blank(),
-                panel.grid.major.x = element_blank(), 
-                axis.ticks.y = element_blank(),
-                axis.ticks.x = element_blank(), 
-                axis.title.y = element_blank(), 
-                axis.text.y = element_blank(), 
-                plot.title = element_text(size = 18))  
-sp <- sp + ggtitle("Unemployment rate in tracts associated with 1 Journal Square (2014)")
-sp <- sp + xlab("")
-print(sp)
-```
-
-```{r map2, fig.width=9, fig.height=6, warning=F, message=F}
-hudson_unemp4 <- subset(hudson_unemp2, year=="2011")
-nj_merged <- geo_join(nj_h, hudson_unemp4, "GEOID", "id")
-
-#nj_merged <- filter(nj_merged, !is.na(unemployment_rate))
-nj_merged <- nj_merged[!is.na(nj_merged$unemployment_rate),]
-pal_sb <- colorNumeric("Greens", domain=hudson_unemp2$unemployment_rate)
-popup_sb <- paste0(nj_merged$name, ": ", as.character(nj_merged$unemployment_rate))
-
-
-leaflet() %>%
-  addProviderTiles("CartoDB.Positron") %>%
-  setView(-74.063644, 40.734330, zoom = 13) %>% 
-  addPolygons(data = nj_merged , 
-              fillColor = ~pal_sb(nj_merged$unemployment_rate), 
-              color = "#444444",
-              fillOpacity = 0.7, 
-              weight = 1, 
-              smoothFactor = 0.2,
-              highlight = highlightOptions(
-                weight = 5,
-                color = "#666",
-                dashArray = "",
-                fillOpacity = 0.7,
-                bringToFront = TRUE),
-              label=popup_sb,
-              labelOptions = labelOptions(
-                style = list("font-weight" = "normal", padding = "3px 8px"),
-                textsize = "15px",
-                direction = "auto")) %>%
-  addMarkers(lng=-74.063644, lat=40.734330, popup="1 Journal Square") %>%
-  addLegend(pal = pal_sb, 
-            values = nj_merged$unemployment_rate, 
-            position = "bottomright", 
-            title = "Unemployment rate<br />2011")
-```
-
-----
-
 # 1 65 Bay Street (2015)
 
 **County:** Hudson
@@ -413,6 +241,8 @@ leaflet() %>%
 **Census tracts:** 44, 45, 46, 52, 53, 55, 56, 58.01, 60, 61, 62, 64, 65, 67, 68, 76
 
 **Address:** 65 Bay Street, Jersey City, NJ
+
+The developer's methodology can be revealed by clicking the 'code' button on the right.
 
 ```{r methodology3, fig.width=9, fig.height=6, message=F, warning=F}
 
@@ -428,13 +258,6 @@ leaflet() %>%
 
 #* The qualifying rate using 2014 annual average data is 9.3 percent (1.5 times the US not seasonally adjusted unemployment rate for the same time period)
 ```
-
-There are 164 census tracts within Hudson County. 
-
-The tracts associated with this project include the areas with the highest and lowest unemployment rates in the county. The tract where 65 Bay Street was constructed tied for 28th place in lowest unemployment rate at 5 percent in 2012. Tract 53 was included by planners within the project borders but is nearly three away from the site and had an unemployment rate of 24 percent— the worst rate in Hudson county that year.
-
-According to the application, the combined unemployment rate is greater than or equal to the qualifying rate of 9.8 percent (150 percent of the US rate for the same time period).
-
 
 ```{r data_prep3, warning=F, message=F}
 # GEOIDs: 34017004400, 34017004500, 34017004600, 34017005200, 34017005300, 34017005500, 34017005600, 34017005801, 34017006000, 34017006100, 34017006200, 34017006400, 34017006500, 34017006700, 34017006800, 34017007600 
@@ -485,6 +308,13 @@ hudson_unemp3 <- select(hudson_unemp, tract=name, `unemployment rate 2012`=ur_20
 hudson_unemp3$tract <- gsub(",.*", "", hudson_unemp3$tract)
 datatable(hudson_unemp3)
 ```
+
+There are 164 census tracts within Hudson County. 
+
+The tracts associated with this project include the areas with the highest and lowest unemployment rates in the county. The tract where 65 Bay Street was constructed tied for 28th place in lowest unemployment rate at 5 percent in 2012. Tract 53 was included by planners within the project borders but is nearly three away from the site and had an unemployment rate of 24 percent— the worst rate in Hudson county that year.
+
+According to the application, the combined unemployment rate is greater than or equal to the qualifying rate of 9.8 percent (150 percent of the US rate for the same time period).
+
 
 According to our calculations (and ignoring margin of error for now), the average unemployment rate in these tracts between 2008 and 2012 was estmated to be `r round(avg_2012,1)` percent. Between 2012 and 2015, that rate changed to `r round(avg_2015,1)` percent. That's a difference of `r round(avg_diff,1)`. 
 
@@ -596,8 +426,8 @@ leaflet() %>%
 # Calls to police by census tract for 65 Bay Street
 
 ```{r calls_and_shots, fig.height=6, fig.width=9, warning=F, message=F}
-police_calls <- read_csv("data/jcpd-all.csv")
-shootings <- read_csv("data/jerseycity2015shootings-use.csv")
+police_calls <- read_csv("../data/jcpd-all.csv")
+shootings <- read_csv("../data/jerseycity2015shootings-use.csv")
 
 
 shootings$datetime <- mdy_hm(shootings$datetime)
