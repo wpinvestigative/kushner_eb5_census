@@ -2,7 +2,7 @@
 
 # About this story
 
-Summary and link to story to come
+**[Jared Kushner and his partners used a program meant for job-starved areas to build a luxury skyscraper](https://www.washingtonpost.com/investigations/jared-kushner-and-his-partners-used-a-program-meant-for-job-starved-areas-to-build-a-luxury-skyscraper/2017/05/31/9c81b52c-4225-11e7-9869-bac8b446820a_story.html)**
 
 # About the folders in this repo
 

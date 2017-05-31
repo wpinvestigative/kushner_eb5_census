@@ -6,7 +6,7 @@ output:
     code_folding: hide
 ---
 
-This geospatial analysis of Jersey City census tracts in Hudson county was used to assist the reporting of this story.
+This geospatial analysis of Jersey City census tracts in Hudson county was used to assist the reporting of the story: **[Jared Kushner and his partners used a program meant for job-starved areas to build a luxury skyscraper](https://www.washingtonpost.com/investigations/jared-kushner-and-his-partners-used-a-program-meant-for-job-starved-areas-to-build-a-luxury-skyscraper/2017/05/31/9c81b52c-4225-11e7-9869-bac8b446820a_story.html)**
 
 Two projects from Jared Kushner's development company received millions of federal funding designed to benefit poor areas. To qualify for low-cost financing, the Kushner group daisy-chained the low-unemployment rate area around the tower site to neighborhoods with poor neighborhoods almost four miles away.
 
