@@ -7,7 +7,7 @@ output:
   pdf_document: default
 ---
   
-This is a more-focused geospatial analysis of unemployment rates in the census tracts chosen specifically by developers compared with the tracts immediately adjacent to the project site. This is [another version](http://wpinvestigates.github.io/kushner_eb5_census/tracts.html) with tracts within a certain distance of the site.
+This is a more-focused geospatial analysis of unemployment rates in the census tracts chosen specifically by developers compared with the tracts immediately adjacent to the project site. This is [another version](http://wpinvestigative.github.io/kushner_eb5_census/tracts.html) with tracts within a certain distance of the site.
 
 The numbers are bucketed and colors are chosen randomly for so it would be easier for graphics to edit.
 

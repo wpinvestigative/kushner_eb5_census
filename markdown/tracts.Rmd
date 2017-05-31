@@ -6,7 +6,7 @@ output:
     code_folding: hide
 ---
 
-This is a geospatial analysis of unemployment rates in the census tracts chosen specifically by developers compared with the tracts within a certain distance surrounding the project site. Here's [an analysis](http://wpinvestigates.github.io/kushner_eb5_census/tracts_two.html) of tracts only immediately adjacent to the project.
+This is a geospatial analysis of unemployment rates in the census tracts chosen specifically by developers compared with the tracts within a certain distance surrounding the project site. Here's [an analysis](http://wpinvestigative.github.io/kushner_eb5_census/tracts_two.html) of tracts only immediately adjacent to the project.
 
 ```{r setup, include=FALSE}
 library(rgdal)

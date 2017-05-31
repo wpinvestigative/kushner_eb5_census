@@ -13,9 +13,9 @@ Summary and link to story to come
 
 # Notebooks
 
-* [Profiles on Jersey city project tracts](http://wpinvestigates.github.io/kushner_eb5_census) - Aggregated information geolocated to specific census tracts to assist with reporting
-* [Comparing economic conditions in Jersey city](http://wpinvestigates.github.io/kushner_eb5_census/tracts.html) - Exploratory data visualizations 
-* [Comparing economic conditions in Jersey city (2)](http://wpinvestigates.github.io/kushner_eb5_census/tracts_two.html) - More focused exploratory data visualizations 
+* [Profiles on Jersey city project tracts](http://wpinvestigative.github.io/kushner_eb5_census) - Aggregated information geolocated to specific census tracts to assist with reporting
+* [Comparing economic conditions in Jersey city](http://wpinvestigative.github.io/kushner_eb5_census/tracts.html) - Exploratory data visualizations 
+* [Comparing economic conditions in Jersey city (2)](http://wpinvestigative.github.io/kushner_eb5_census/tracts_two.html) - More focused exploratory data visualizations 
 
 
 

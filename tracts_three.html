@@ -122,7 +122,7 @@ $(document).ready(function () {
 </div>
 
 
-<p>This is a more-focused geospatial analysis of unemployment rates in the census tracts chosen specifically by developers compared with the tracts they originally pitched to the state.</p>
+<p>This is a more-focused geospatial analysis of unemployment rates in the census tracts chosen specifically by developers compared with the tracts they originally pitched to the state. They pitched 26 census tracts to be included but 23 percent of them did not exist. They also mistakenly thought the project site was on census tract 26, which also does not exist in Hudson county.</p>
 <p>The numbers are bucketed and colors are chosen randomly for so it would be easier for graphics to edit.</p>
 <pre class="r"><code>nj_h &lt;- tracts(&quot;NJ&quot;, county=&quot;Hudson&quot;, cb=F)
 nj_h_centroids &lt;-  SpatialPointsDataFrame(gCentroid(nj_h, byid=TRUE), 
